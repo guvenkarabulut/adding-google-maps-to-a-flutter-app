@@ -1,7 +1,13 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'src/locations.dart' as locations;
 
-void main() => runApp(const MyApp());
+void main() {
+  runApp(const MyApp());
+}
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -11,9 +17,33 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  late GoogleMapController mapController;
-  void _onMapCreated(GoogleMapController controller) {
-    mapController = controller;
+  final Map<String, Marker> _markers = {};
+
+  Future<void> _onMapCreated(GoogleMapController controller) async {
+    final googleOffices = await locations.getGoogleOffices();
+
+    final BitmapDescriptor markerIcon = await BitmapDescriptor.fromAssetImage(
+      ImageConfiguration(
+        devicePixelRatio: 2.5,
+        size: Size(32, 37),
+      ),
+      'assets/marker.png',
+    );
+    setState(() {
+      _markers.clear();
+      for (final office in googleOffices.offices) {
+        final marker = Marker(
+          markerId: MarkerId(office.name),
+          position: LatLng(office.lat, office.lng),
+          icon: markerIcon,
+          infoWindow: InfoWindow(
+            title: office.name,
+            snippet: office.address,
+          ),
+        );
+        _markers[office.name] = marker;
+      }
+    });
   }
 
   @override
@@ -29,15 +59,13 @@ class _MyAppState extends State<MyApp> {
           centerTitle: true,
           elevation: 2,
         ),
-        // GoogleMap widgetini body kısmına ekliyoruz ve onMapCreated fonksiyonunu çağırıyoruz
-        // onMapCreated fonksiyonu ile mapController değişkenine erişebiliyoruz
         body: GoogleMap(
           onMapCreated: _onMapCreated,
-          // "initialCameraPosition:" Sayfa açıldığında gözükecek konum ve zoom değeri
           initialCameraPosition: const CameraPosition(
-            target: LatLng(38.868862, 35.428293),
-            zoom: 7,
+            target: LatLng(0, 0),
+            zoom: 2,
           ),
+          markers: _markers.values.toSet(),
         ),
       ),
     );
